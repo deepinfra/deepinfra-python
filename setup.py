@@ -8,7 +8,7 @@ setup(
     description="Unofficial Python wrapper for the DeepInfra Inference API",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/ovuruska/deepinfra-python",
+    url="https://github.com/deepinfra/deepinfra-python",
     packages=find_packages(),
     install_requires=[
         "requests",

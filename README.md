@@ -1,12 +1,9 @@
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=ovuruska_deepinfra-python&metric=bugs)](https://sonarcloud.io/summary/new_code?id=ovuruska_deepinfra-python)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=ovuruska_deepinfra-python&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=ovuruska_deepinfra-python)
-[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=ovuruska_deepinfra-python&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=ovuruska_deepinfra-python)
-![Build Status](https://github.com/ovuruska/deepinfra-python/actions/workflows/deploy.yaml/badge.svg)
+# deepinfra
+
+[![CI](https://github.com/deepinfra/deepinfra-python/actions/workflows/ci.yml/badge.svg)](https://github.com/deepinfra/deepinfra-python/actions/workflows/ci.yml)
 [![PyPI version](https://badge.fury.io/py/deepinfra.svg)](https://pypi.org/project/deepinfra/)
 [![Python Version](https://img.shields.io/pypi/pyversions/deepinfra.svg)](https://pypi.org/project/deepinfra/)
-[![License](https://img.shields.io/github/license/ovuruska/deepinfra-python.svg)](LICENSE)
-
-# deepinfra
+[![License](https://img.shields.io/github/license/deepinfra/deepinfra-python.svg)](LICENSE)
 
 `deepinfra` is a Python library designed to provide a simple interface for interacting with DeepInfra's Inference API, facilitating various AI and machine learning tasks.
 
