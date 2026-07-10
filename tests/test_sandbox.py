@@ -52,11 +52,29 @@ def test_create_waits_until_running(client):
 
 
 @respx.mock
-def test_create_no_wait(client):
+def test_create_no_wait_populates_fields(client):
     respx.post(f"{BASE_URL}/v1/sandboxes").respond(json={"sandbox_id": SB_ID})
+    get = respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json=_info("creating"))
     sb = Sandbox.create(wait=False, client=client)
     assert sb.id == SB_ID
-    assert sb.state == ""
+    assert sb.state == "creating"
+    assert sb.plan == "medium"
+    assert get.call_count == 1
+
+
+@respx.mock
+def test_sandbox_id_is_url_quoted(client):
+    quoted = f"{BASE_URL}/v1/sandboxes/..%2Fmodels"
+    get = respx.get(quoted).respond(status_code=404, json={"error": "Sandbox not found"})
+    with pytest.raises(NotFoundError):
+        Sandbox.from_id("../models", client=client)
+    assert get.call_count == 1
+    assert get.calls.last.request.url.raw_path.endswith(b"/v1/sandboxes/..%2Fmodels")
+
+
+def test_from_id_empty_raises(client):
+    with pytest.raises(ValueError):
+        Sandbox.from_id("", client=client)
 
 
 @respx.mock

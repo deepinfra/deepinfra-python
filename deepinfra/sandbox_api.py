@@ -19,6 +19,7 @@ import builtins
 import time
 from collections.abc import Mapping
 from typing import Any, Union
+from urllib.parse import quote
 
 from ._exceptions import NotFoundError, SandboxFailedError, SandboxTimeoutError
 from ._sandbox_models import ExecResult, SandboxInfo
@@ -103,6 +104,8 @@ class Sandbox:
         sandbox = cls(SandboxInfo(sandbox_id=reply["sandbox_id"]), client=client)
         if wait:
             sandbox.wait_until_running(timeout=wait_timeout)
+        else:
+            sandbox.refresh()
         return sandbox
 
     @classmethod
@@ -122,6 +125,8 @@ class Sandbox:
         sandbox = cls(SandboxInfo(sandbox_id=reply["sandbox_id"]), client=client)
         if wait:
             await sandbox.await_until_running(timeout=wait_timeout)
+        else:
+            await sandbox.arefresh()
         return sandbox
 
     @classmethod
@@ -306,7 +311,7 @@ class Sandbox:
         http_timeout = (timeout_seconds or _DEFAULT_EXEC_TIMEOUT) + _EXEC_HTTP_GRACE
         return RequestSpec(
             "POST",
-            f"{_SANDBOXES}/{self.id}/exec",
+            _id_path(self.id, "exec"),
             json={"command": list(command), "timeout_seconds": timeout_seconds},
             timeout=http_timeout,
         )
@@ -381,11 +386,22 @@ class SandboxFS:
         return RequestSpec("GET", self._content_path(), params={"path": path})
 
     def _content_path(self) -> str:
-        return f"{_SANDBOXES}/{self._sandbox.id}/fs/content"
+        return _id_path(self._sandbox.id, "fs", "content")
+
+
+def _id_path(sandbox_id: str, *suffix: str) -> str:
+    """Build a /v1/sandboxes/{id}[/...] path with the id URL-quoted.
+
+    Quoting keeps ids like "../models" from escaping the path, so a bad id
+    always surfaces as a clean 404 instead of hitting an unrelated endpoint.
+    """
+    if not sandbox_id:
+        raise ValueError("sandbox_id must not be empty")
+    return "/".join((_SANDBOXES, quote(sandbox_id, safe=""), *suffix))
 
 
 def _get_spec(sandbox_id: str) -> RequestSpec:
-    return RequestSpec("GET", f"{_SANDBOXES}/{sandbox_id}", retry_connect=True)
+    return RequestSpec("GET", _id_path(sandbox_id), retry_connect=True)
 
 
 def _list_spec() -> RequestSpec:
@@ -393,8 +409,8 @@ def _list_spec() -> RequestSpec:
 
 
 def _op_spec(sandbox_id: str, op: str) -> RequestSpec:
-    return RequestSpec("POST", f"{_SANDBOXES}/{sandbox_id}/{op}")
+    return RequestSpec("POST", _id_path(sandbox_id, op))
 
 
 def _delete_spec(sandbox_id: str) -> RequestSpec:
-    return RequestSpec("DELETE", f"{_SANDBOXES}/{sandbox_id}")
+    return RequestSpec("DELETE", _id_path(sandbox_id))

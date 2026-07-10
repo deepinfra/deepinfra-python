@@ -110,10 +110,8 @@ class DeepInfraClient:
         for attempt in range(self.max_retries + 1):
             try:
                 response = self._sync().request(**self._request_kwargs(spec))
-            except httpx.TimeoutException as exc:
-                error: APIConnectionError = APITimeoutError(str(exc) or "Request timed out")
             except httpx.TransportError as exc:
-                error = APIConnectionError(str(exc) or "Connection error")
+                error = _map_transport_error(exc)
             else:
                 if self._should_retry_status(spec, response, attempt):
                     time.sleep(next(delays))
@@ -132,10 +130,8 @@ class DeepInfraClient:
         for attempt in range(self.max_retries + 1):
             try:
                 response = await self._async().request(**self._request_kwargs(spec))
-            except httpx.TimeoutException as exc:
-                error: APIConnectionError = APITimeoutError(str(exc) or "Request timed out")
             except httpx.TransportError as exc:
-                error = APIConnectionError(str(exc) or "Connection error")
+                error = _map_transport_error(exc)
             else:
                 if self._should_retry_status(spec, response, attempt):
                     await asyncio.sleep(next(delays))
@@ -157,10 +153,8 @@ class DeepInfraClient:
         request = client.build_request(**self._request_kwargs(spec))
         try:
             response = client.send(request, stream=True)
-        except httpx.TimeoutException as exc:
-            raise APITimeoutError(str(exc) or "Request timed out") from exc
         except httpx.TransportError as exc:
-            raise APIConnectionError(str(exc) or "Connection error") from exc
+            raise _map_transport_error(exc) from exc
         try:
             if response.is_error:
                 response.read()
@@ -175,10 +169,8 @@ class DeepInfraClient:
         request = client.build_request(**self._request_kwargs(spec))
         try:
             response = await client.send(request, stream=True)
-        except httpx.TimeoutException as exc:
-            raise APITimeoutError(str(exc) or "Request timed out") from exc
         except httpx.TransportError as exc:
-            raise APIConnectionError(str(exc) or "Connection error") from exc
+            raise _map_transport_error(exc) from exc
         try:
             if response.is_error:
                 await response.aread()
@@ -262,6 +254,12 @@ class DeepInfraClient:
                         timeout=self.timeout, limits=_default_limits()
                     )
         return self._async_client
+
+
+def _map_transport_error(exc: httpx.TransportError) -> APIConnectionError:
+    if isinstance(exc, httpx.TimeoutException):
+        return APITimeoutError(str(exc) or "Request timed out")
+    return APIConnectionError(str(exc) or "Connection error")
 
 
 def _default_limits() -> httpx.Limits:
