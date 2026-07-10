@@ -1,1 +1,45 @@
-from .max_retries_exceeded import MaxRetriesExceededError
+"""Backward-compat package; the hierarchy lives in deepinfra._exceptions."""
+
+from deepinfra._exceptions import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AuthenticationError,
+    BadRequestError,
+    CapacityError,
+    CommandFailedError,
+    ConflictError,
+    ContentTooLargeError,
+    DeepInfraError,
+    InternalServerError,
+    MaxRetriesExceededError,
+    NotFoundError,
+    PermissionDeniedError,
+    SandboxError,
+    SandboxExecError,
+    SandboxFailedError,
+    SandboxTimeoutError,
+    TooManySandboxesError,
+)
+
+__all__ = [
+    "DeepInfraError",
+    "APIConnectionError",
+    "APITimeoutError",
+    "APIStatusError",
+    "AuthenticationError",
+    "BadRequestError",
+    "PermissionDeniedError",
+    "NotFoundError",
+    "ConflictError",
+    "ContentTooLargeError",
+    "TooManySandboxesError",
+    "CapacityError",
+    "InternalServerError",
+    "MaxRetriesExceededError",
+    "SandboxError",
+    "SandboxTimeoutError",
+    "SandboxFailedError",
+    "SandboxExecError",
+    "CommandFailedError",
+]

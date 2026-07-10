@@ -22,8 +22,6 @@ class AutomaticSpeechRecognition(BaseModel):
 
         """
 
-        form_data = FormDataUtils.get_form_data(body, blob_keys=["audio"])
-        response = self.client.post(
-            form_data, {"headers": {"content-type": form_data.content_type}}
-        )
+        fields, files = FormDataUtils.get_form_data(body, blob_keys=["audio"])
+        response = self._post(data=fields, files=files)
         return AutomaticSpeechRecognitionResponse(**response.json())

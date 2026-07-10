@@ -5,51 +5,112 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/deepinfra.svg)](https://pypi.org/project/deepinfra/)
 [![License](https://img.shields.io/github/license/deepinfra/deepinfra-python.svg)](LICENSE)
 
-`deepinfra` is a Python library designed to provide a simple interface for interacting with DeepInfra's Inference API, facilitating various AI and machine learning tasks.
+The official Python SDK for the [DeepInfra](https://deepinfra.com) API:
+**Sandboxes** (isolated microVMs for running untrusted code) and inference.
 
 ## Installation
-
-To install `deepinfra`, run the following command:
 
 ```bash
 pip install deepinfra
 ```
 
-## Examples
+Authentication uses your DeepInfra API key — pass `api_key=` or set the
+`DEEPINFRA_API_KEY` environment variable (the same key you use for inference,
+from [deepinfra.com/dash/api_keys](https://deepinfra.com/dash/api_keys)).
 
-### Use Automatic Speech Recognition
+## Sandboxes
 
-You can use the Automatic Speech Recognition (ASR) API to transcribe audio files, URLs and buffer objects.
-#### Transcribe an audio file
+Create an isolated Linux microVM, run bash/python inside it, move files in and
+out, and tear it down — in a few lines:
+
+```python
+from deepinfra import Sandbox
+
+sb = Sandbox.create(plan="medium", timeout="10m")     # blocks until running
+
+r = sb.exec("bash", "-c", "pip install pandas && python -c 'import pandas; print(pandas.__version__)'")
+print(r.stdout, r.stderr, r.returncode)
+
+out = sb.run_python("print(21 * 2)").check()          # .check() raises on non-zero exit
+print(out.stdout)                                     # "42"
+
+sb.fs.write("/work/in.csv", b"a,b\n1,2\n")
+data = sb.fs.read("/work/in.csv")
+
+sb.stop()        # frees compute, keeps disk
+sb.start()       # resumes on the same disk
+sb.terminate()   # deletes the sandbox
+```
+
+Every network method has an async twin prefixed with `a`:
+
+```python
+sb = await Sandbox.acreate(plan="small")
+r = await sb.aexec("uname", "-a")
+await sb.aterminate()
+```
+
+Useful patterns:
+
+```python
+# Auto-terminate with a context manager
+with Sandbox.create(plan="small") as sb:
+    sb.run_python("open('/work/out.txt', 'w').write('hi')")
+    print(sb.fs.read("/work/out.txt"))
+
+# Find existing sandboxes
+sb = Sandbox.from_id("sb_...")
+etl_boxes = Sandbox.list(tags={"job": "etl-42"})
+
+# Large scripts: upload, then run
+sb.fs.write("/work/script.py", open("script.py").read())
+sb.exec("python3", "/work/script.py", timeout="30m")
+```
+
+Errors are typed: `AuthenticationError` (401), `NotFoundError` (404),
+`ConflictError` (409, e.g. exec on a stopped sandbox), `TooManySandboxesError`
+(429, per-account cap), `CapacityError` (503), plus SDK-side
+`SandboxTimeoutError` / `SandboxFailedError` / `CommandFailedError`.
+
+Roadmap (API designed, lands in an upcoming release): `exec_stream` (live
+output), `snapshot()` / `Sandbox.from_snapshot()`, `expose_port()`,
+`fs.upload_dir()`.
+
+## Inference
+
+The inference wrappers predate the SDK's OpenAI-compatible endpoints and remain
+supported:
+
+### Automatic Speech Recognition
 
 ```python
 from deepinfra import AutomaticSpeechRecognition
 
-model_name = "openai/whisper-base"
-asr = AutomaticSpeechRecognition(model_name)
+asr = AutomaticSpeechRecognition("openai/whisper-base")
 
-file_path = "path/to/audio/file" 
-body = {
-    "audio": file_path
-}
+body = {"audio": "path/to/audio/file"}  # or a URL, or raw bytes
 transcription = asr.generate(body)
-print(transcription["text"])
+print(transcription.text)
 ```
 
-#### Transcribe an audio URL
+### Text Generation
 
 ```python
-from deepinfra import AutomaticSpeechRecognition
+from deepinfra import TextGeneration
 
-model_name = "openai/whisper-base"
-asr = AutomaticSpeechRecognition(model_name)
-
-url = "https://path/to/audio/file"
-body = {
-    "audio": url
-}
-transcription = asr.generate(body)
-print(transcription["text"])
+llm = TextGeneration("mistralai/Mixtral-8x22B-Instruct-v0.1")
+res = llm.generate({"input": "What is the capital of France?"})
+print(res.results[0].generated_text)
 ```
 
+`Embeddings` and `TextToImage` work the same way. For chat-style LLM usage you
+can also point the official OpenAI client at
+`https://api.deepinfra.com/v1/openai`.
 
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest tests          # unit tests (no network)
+mypy && ruff check .  # types + lint
+```
