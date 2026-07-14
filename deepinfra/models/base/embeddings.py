@@ -1,3 +1,6 @@
+from typing import cast
+
+from deepinfra._utils import tolerant_dataclass
 from deepinfra.models.base import BaseModel
 from deepinfra.types.embeddings.response import EmbeddingsResponse
 
@@ -14,4 +17,5 @@ class Embeddings(BaseModel):
         :return:
         """
         response = self._post(json=body)
-        return EmbeddingsResponse(**response.json())
+        return cast(EmbeddingsResponse,
+                    tolerant_dataclass(EmbeddingsResponse, response.json()))

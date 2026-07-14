@@ -34,3 +34,18 @@ class TestTextGeneration(unittest.TestCase):
         self.assertEqual(response.results, [])
         self.assertEqual(request.headers["Authorization"], f"Bearer {api_key}")
         self.assertEqual(json.loads(request.content), body)
+
+
+class TestSchemaDrift(unittest.TestCase):
+    @respx.mock
+    def test_extra_and_missing_response_fields_tolerated(self):
+        respx.post(f"https://api.deepinfra.com/v1/inference/{model_name}").respond(json={
+            "results": [{"generated_text": "hi"}],
+            "request_id": "new-field-2026",
+            "another_new_field": {"x": 1},
+            # num_tokens / num_input_tokens / inference_status absent
+        })
+        response = TextGeneration(model_name, api_key).generate({"input": "x"})
+        self.assertEqual(response.results[0]["generated_text"], "hi")
+        self.assertIsNone(response.num_tokens)
+        self.assertIsNone(response.inference_status)

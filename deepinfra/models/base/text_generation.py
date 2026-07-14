@@ -3,6 +3,9 @@
     which is the base class for all text generation models.
 """
 
+from typing import cast
+
+from deepinfra._utils import tolerant_dataclass
 from deepinfra.models.base import BaseModel
 from deepinfra.types.text_generation.response import TextGenerationResponse
 
@@ -20,4 +23,5 @@ class TextGeneration(BaseModel):
         :return:
         """
         response = self._post(json=body)
-        return TextGenerationResponse(**response.json())
+        return cast(TextGenerationResponse,
+                    tolerant_dataclass(TextGenerationResponse, response.json()))

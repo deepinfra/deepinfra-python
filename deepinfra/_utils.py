@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import random
 import re
 from collections.abc import Iterator, Mapping
@@ -49,3 +50,16 @@ def backoff_delays(
 def tags_match(subset: Mapping[str, str], tags: Mapping[str, str]) -> bool:
     """True when every key/value in subset is present in tags."""
     return all(tags.get(k) == v for k, v in subset.items())
+
+
+def tolerant_dataclass(cls: type, data: Mapping[str, object]) -> object:
+    """Build a dataclass from an API dict, surviving schema drift.
+
+    Unknown keys are dropped and missing fields default to None, so the
+    server adding/removing response fields never crashes the client.
+    """
+    names = {f.name for f in dataclasses.fields(cls)}
+    kwargs: dict[str, object] = {k: v for k, v in data.items() if k in names}
+    for name in names - kwargs.keys():
+        kwargs[name] = None
+    return cls(**kwargs)
