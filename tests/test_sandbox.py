@@ -145,16 +145,45 @@ def test_list_with_client_side_tag_filter(client):
 def test_stop_start_terminate(client):
     stop = respx.post(f"{BASE_URL}/v1/sandboxes/{SB_ID}/stop").respond(json={})
     start = respx.post(f"{BASE_URL}/v1/sandboxes/{SB_ID}/start").respond(json={})
-    respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json=_info("running"))
+    get = respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}")
+    get.side_effect = [
+        httpx.Response(200, json=_info("running")),  # from_id
+        httpx.Response(200, json=_info("stopping")),  # stop() wait poll
+        httpx.Response(200, json=_info("stopped")),
+        httpx.Response(200, json=_info("running")),  # start() wait poll
+    ]
     delete = respx.delete(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json={})
 
     sb = Sandbox.from_id(SB_ID, client=client)
     sb.stop()
+    assert sb.state == "stopped"
     sb.start()
+    assert sb.state == "running"
     sb.terminate()
     assert stop.call_count == 1
     assert start.call_count == 1
     assert delete.call_count == 1
+    assert get.call_count == 4
+
+
+@respx.mock
+def test_stop_no_wait_skips_polling(client):
+    respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json=_info("running"))
+    stop = respx.post(f"{BASE_URL}/v1/sandboxes/{SB_ID}/stop").respond(json={})
+    sb = Sandbox.from_id(SB_ID, client=client)
+    sb.stop(wait=False)
+    assert stop.call_count == 1
+    assert sb.state == "running"  # not refreshed
+
+
+@respx.mock
+def test_stop_wait_timeout(client):
+    respx.post(f"{BASE_URL}/v1/sandboxes/{SB_ID}/stop").respond(json={})
+    respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json=_info("running"))
+    sb = Sandbox.from_id(SB_ID, client=client)
+    with pytest.raises(SandboxTimeoutError, match="stopped") as excinfo:
+        sb.stop(wait_timeout=0.5)
+    assert excinfo.value.sandbox_id == SB_ID
 
 
 @respx.mock
@@ -183,6 +212,7 @@ async def test_async_lifecycle(client):
     get.side_effect = [
         httpx.Response(200, json=_info("creating")),
         httpx.Response(200, json=_info("running")),
+        httpx.Response(200, json=_info("stopped")),  # astop() wait poll
     ]
     stop = respx.post(f"{BASE_URL}/v1/sandboxes/{SB_ID}/stop").respond(json={})
     delete = respx.delete(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json={})
@@ -190,6 +220,7 @@ async def test_async_lifecycle(client):
     sb = await Sandbox.acreate(client=client)
     assert sb.state == "running"
     await sb.astop()
+    assert sb.state == "stopped"
     await sb.aterminate()
     assert stop.call_count == 1
     assert delete.call_count == 1

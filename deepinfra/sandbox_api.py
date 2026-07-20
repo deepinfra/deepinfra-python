@@ -33,6 +33,7 @@ _DEFAULT_EXEC_TIMEOUT = 60
 _EXEC_HTTP_GRACE = 30.0
 
 _RUNNING = "running"
+_STOPPED = "stopped"
 _TERMINAL_STATES = ("failed", "deleted")
 
 Duration = Union[int, float, str]
@@ -187,46 +188,39 @@ class Sandbox:
         return self
 
     def wait_until_running(self, timeout: float = _DEFAULT_WAIT_TIMEOUT) -> Sandbox:
-        deadline = time.monotonic() + timeout
-        for delay in backoff_delays():
-            self.refresh()
-            self._check_wait_state()
-            if self.state == _RUNNING:
-                return self
-            if time.monotonic() + delay > deadline:
-                raise SandboxTimeoutError(
-                    f"Sandbox {self.id} still {self.state} after "
-                    f"{timeout:.0f}s (terminate it if unwanted)",
-                    sandbox_id=self.id,
-                )
-            time.sleep(delay)
-        raise AssertionError("unreachable")
+        return self._wait_for_state(_RUNNING, timeout)
+
+    def wait_until_stopped(self, timeout: float = _DEFAULT_WAIT_TIMEOUT) -> Sandbox:
+        return self._wait_for_state(_STOPPED, timeout)
 
     async def await_until_running(
         self, timeout: float = _DEFAULT_WAIT_TIMEOUT
     ) -> Sandbox:
-        import asyncio
+        return await self._await_for_state(_RUNNING, timeout)
 
-        deadline = time.monotonic() + timeout
-        for delay in backoff_delays():
-            await self.arefresh()
-            self._check_wait_state()
-            if self.state == _RUNNING:
-                return self
-            if time.monotonic() + delay > deadline:
-                raise SandboxTimeoutError(
-                    f"Sandbox {self.id} still {self.state} after "
-                    f"{timeout:.0f}s (terminate it if unwanted)",
-                    sandbox_id=self.id,
-                )
-            await asyncio.sleep(delay)
-        raise AssertionError("unreachable")
+    async def await_until_stopped(
+        self, timeout: float = _DEFAULT_WAIT_TIMEOUT
+    ) -> Sandbox:
+        return await self._await_for_state(_STOPPED, timeout)
 
-    def stop(self) -> None:
+    def stop(
+        self, *, wait: bool = True, wait_timeout: float = _DEFAULT_WAIT_TIMEOUT
+    ) -> None:
+        """Stop the sandbox (frees compute, keeps disk).
+
+        Stopping is asynchronous server-side; by default block until the
+        state is "stopped", so a following start() cannot race it.
+        """
         self._client.request(_op_spec(self.id, "stop"))
+        if wait:
+            self.wait_until_stopped(timeout=wait_timeout)
 
-    async def astop(self) -> None:
+    async def astop(
+        self, *, wait: bool = True, wait_timeout: float = _DEFAULT_WAIT_TIMEOUT
+    ) -> None:
         await self._client.arequest(_op_spec(self.id, "stop"))
+        if wait:
+            await self.await_until_stopped(timeout=wait_timeout)
 
     def start(
         self, *, wait: bool = True, wait_timeout: float = _DEFAULT_WAIT_TIMEOUT
@@ -296,12 +290,45 @@ class Sandbox:
 
     # -- internals --
 
-    def _check_wait_state(self) -> None:
-        if self.state in _TERMINAL_STATES:
+    def _wait_for_state(self, target: str, timeout: float) -> Sandbox:
+        deadline = time.monotonic() + timeout
+        for delay in backoff_delays():
+            self.refresh()
+            self._check_wait_state(target)
+            if self.state == target:
+                return self
+            if time.monotonic() + delay > deadline:
+                raise self._wait_timeout_error(target, timeout)
+            time.sleep(delay)
+        raise AssertionError("unreachable")
+
+    async def _await_for_state(self, target: str, timeout: float) -> Sandbox:
+        import asyncio
+
+        deadline = time.monotonic() + timeout
+        for delay in backoff_delays():
+            await self.arefresh()
+            self._check_wait_state(target)
+            if self.state == target:
+                return self
+            if time.monotonic() + delay > deadline:
+                raise self._wait_timeout_error(target, timeout)
+            await asyncio.sleep(delay)
+        raise AssertionError("unreachable")
+
+    def _check_wait_state(self, target: str) -> None:
+        if self.state in _TERMINAL_STATES and self.state != target:
             raise SandboxFailedError(
                 f"Sandbox {self.id} entered state {self.state!r}",
                 sandbox_id=self.id,
             )
+
+    def _wait_timeout_error(self, target: str, timeout: float) -> SandboxTimeoutError:
+        return SandboxTimeoutError(
+            f"Sandbox {self.id} still {self.state!r} (waiting for {target!r}) "
+            f"after {timeout:.0f}s (terminate it if unwanted)",
+            sandbox_id=self.id,
+        )
 
     def _exec_spec(
         self, command: tuple[str, ...], timeout: Duration | None

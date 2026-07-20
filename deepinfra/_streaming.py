@@ -17,23 +17,28 @@ from ._exceptions import SandboxExecError
 from ._sandbox_models import ExecResult
 
 
+def _parse_event(line: str) -> dict[str, Any] | None:
+    """Decode one NDJSON line; None for blank lines and {} heartbeats."""
+    line = line.strip()
+    if not line:
+        return None
+    event = json.loads(line)
+    if isinstance(event, dict) and event:
+        return event
+    return None
+
+
 def iter_ndjson(lines: Iterable[str]) -> Iterator[dict[str, Any]]:
     for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        event = json.loads(line)
-        if isinstance(event, dict) and event:
+        event = _parse_event(line)
+        if event is not None:
             yield event
 
 
 async def aiter_ndjson(lines: AsyncIterator[str]) -> AsyncIterator[dict[str, Any]]:
     async for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        event = json.loads(line)
-        if isinstance(event, dict) and event:
+        event = _parse_event(line)
+        if event is not None:
             yield event
 
 

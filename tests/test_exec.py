@@ -109,7 +109,7 @@ def test_fold_handles_split_reads():
 @respx.mock
 async def test_aexec(client):
     respx.post(f"{BASE_URL}/v1/sandboxes/{SB_ID}/exec").respond(
-        text=_ndjson({"stdout": "async"}, {"returncode": 0}),
+        text=_ndjson({"stdout": "async"}, {}, {"returncode": 0}),  # {} heartbeat
     )
     result = await _sandbox(client).aexec("echo", "async")
     assert result.stdout == "async"

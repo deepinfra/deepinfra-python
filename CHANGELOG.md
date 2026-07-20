@@ -4,7 +4,9 @@
 
 - New feature: **Sandboxes** — `Sandbox.create/from_id/list`, `exec`,
   `run_python`, `fs.read/write`, `stop/start/terminate`, context managers, and
-  async twins (`acreate`, `aexec`, ...) for everything.
+  async twins (`acreate`, `aexec`, ...) for everything. `stop()`/`start()`
+  block until the state transition completes (`wait=False` to fire-and-forget),
+  so `sb.stop(); sb.start()` never races the server.
 - New unified `DeepInfraClient` built on httpx (sync + async, pooled
   connections, explicit timeouts, typed errors, retry policy: connect-error
   retries where marked, 502/503/504 retries only on GETs).

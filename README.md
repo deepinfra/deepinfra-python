@@ -37,9 +37,9 @@ print(out.stdout)                                     # "42"
 sb.fs.write("/work/in.csv", b"a,b\n1,2\n")
 data = sb.fs.read("/work/in.csv")
 
-sb.stop()        # frees compute, keeps disk
-sb.start()       # resumes on the same disk
-sb.terminate()   # deletes the sandbox
+sb.stop()        # frees compute, keeps disk; blocks until stopped
+sb.start()       # resumes on the same disk; blocks until running
+sb.terminate()   # deletes the sandbox (stays fetchable by id as "deleted" briefly)
 ```
 
 Every network method has an async twin prefixed with `a`:
