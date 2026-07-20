@@ -2,6 +2,9 @@
 The automatic speech recognition model.
 """
 
+from typing import cast
+
+from deepinfra._utils import tolerant_dataclass
 from deepinfra.models.base import BaseModel
 from deepinfra.types.automatic_speech_recognition.response import (
     AutomaticSpeechRecognitionResponse,
@@ -22,8 +25,7 @@ class AutomaticSpeechRecognition(BaseModel):
 
         """
 
-        form_data = FormDataUtils.get_form_data(body, blob_keys=["audio"])
-        response = self.client.post(
-            form_data, {"headers": {"content-type": form_data.content_type}}
-        )
-        return AutomaticSpeechRecognitionResponse(**response.json())
+        fields, files = FormDataUtils.get_form_data(body, blob_keys=["audio"])
+        response = self._post(data=fields, files=files)
+        return cast(AutomaticSpeechRecognitionResponse,
+                    tolerant_dataclass(AutomaticSpeechRecognitionResponse, response.json()))

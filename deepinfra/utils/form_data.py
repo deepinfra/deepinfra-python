@@ -1,6 +1,4 @@
-from typing import List, Optional
-
-from requests_toolbelt import MultipartEncoder
+from typing import Any, Dict, List, Optional, Tuple
 
 from deepinfra.utils.read_stream import ReadStreamUtils
 
@@ -12,21 +10,24 @@ class FormDataUtils:
     """
 
     @staticmethod
-    def get_form_data(data: dict, blob_keys: Optional[List[str]] = None):
+    def get_form_data(
+        data: dict, blob_keys: Optional[List[str]] = None
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Creates a MultipartEncoder object from the data.
+        Splits the data into httpx multipart (fields, files).
         :param data:
         :param blob_keys:
         :return:
         """
         if blob_keys is None:
             blob_keys = list()
-        body = {}
+        fields: Dict[str, Any] = {}
+        files: Dict[str, Any] = {}
 
         for key, value in data.items():
             if key in blob_keys:
-                body[key] = (key, ReadStreamUtils.get_read_stream(value))
+                files[key] = (key, ReadStreamUtils.get_read_stream(value))
             else:
-                body[key] = value
+                fields[key] = value
 
-        return MultipartEncoder(fields=body)
+        return fields, files

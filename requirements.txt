@@ -1,5 +1,0 @@
-setuptools
-setuptools-scm
-requests
-dataclasses
-requests-toolbelt

@@ -1,6 +1,7 @@
 from io import BytesIO
 import base64
-import requests
+
+import httpx
 
 
 class ReadStreamUtils:
@@ -34,7 +35,7 @@ class ReadStreamUtils:
         :param url: The URL of the image.
         :return: A BytesIO containing the image data.
         """
-        response = requests.get(url)
+        response = httpx.get(url, follow_redirects=True)
         return BytesIO(response.content)
 
     @staticmethod

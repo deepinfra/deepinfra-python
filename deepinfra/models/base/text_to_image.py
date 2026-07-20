@@ -1,5 +1,6 @@
-import json
+from typing import cast
 
+from deepinfra._utils import tolerant_dataclass
 from deepinfra.models.base import BaseModel
 from deepinfra.types.text_to_image import TextToImageResponse
 
@@ -16,6 +17,6 @@ class TextToImage(BaseModel):
         :param input:
         :return:
         """
-        body = {"input": input}
-        response = self.client.post(json.dumps(input))
-        return TextToImageResponse(**response.json())
+        response = self._post(json=input)
+        return cast(TextToImageResponse,
+                    tolerant_dataclass(TextToImageResponse, response.json()))

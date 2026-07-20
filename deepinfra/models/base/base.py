@@ -3,9 +3,11 @@
 """
 
 import os
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from deepinfra.clients import DeepInfraClient
+import httpx
+
+from deepinfra.clients import DeepInfraClient, RequestSpec
 from deepinfra.constants.client import ROOT_URL
 from deepinfra.utils.url import URLUtils
 
@@ -17,7 +19,7 @@ class BaseModel:
     @param auth_token: The API key to authenticate the requests.
     """
 
-    def __init__(self, endpoint, auth_token: Optional[str] = None):
+    def __init__(self, endpoint: str, auth_token: Optional[str] = None) -> None:
         if URLUtils.is_valid_url(endpoint):
             self.endpoint = endpoint
         else:
@@ -27,24 +29,40 @@ class BaseModel:
             or self._get_auth_token_from_env()
             or self._warn_about_missing_api_key()
         )
-        self.client = DeepInfraClient(self.endpoint, self.auth_token)
+        self.client = DeepInfraClient(self.auth_token)
 
-    def _get_auth_token_from_env(self):
+    def _post(
+        self,
+        *,
+        json: Any = None,
+        data: Optional[Dict[str, Any]] = None,
+        files: Optional[Dict[str, Any]] = None,
+    ) -> httpx.Response:
+        return self.client.request(
+            RequestSpec(
+                "POST",
+                self.endpoint,
+                json=json,
+                data=data,
+                files=files,
+                retry_connect=True,
+            )
+        )
+
+    def _get_auth_token_from_env(self) -> Optional[str]:
         """
         Fetches the API key from the environment.
         @return: The API key.
         """
-        self.auth_token = os.getenv("DEEPINFRA_API_KEY")
-        return self.auth_token
+        return os.getenv("DEEPINFRA_API_KEY")
 
-    def _warn_about_missing_api_key(self):
+    def _warn_about_missing_api_key(self) -> str:
         """
         Warns the user about the missing API key.
         @return: An empty string.
         """
-        if not self.auth_token:
-            print(
-                "Warning: No API key provided. "
-                "Please provide an API key to authenticate your requests."
-            )
+        print(
+            "Warning: No API key provided. "
+            "Please provide an API key to authenticate your requests."
+        )
         return ""

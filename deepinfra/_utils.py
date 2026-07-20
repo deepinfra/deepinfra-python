@@ -1,0 +1,68 @@
+"""Small internal helpers shared by the SDK."""
+
+from __future__ import annotations
+
+import dataclasses
+import math
+import random
+import re
+from collections.abc import Iterator, Mapping
+
+_DURATION_RE = re.compile(r"(\d+)(h|m|s)")
+
+
+def parse_duration(value: int | float | str) -> int:
+    """Parse a duration into whole seconds.
+
+    Accepts plain numbers (seconds) or strings like "90", "90s", "10m",
+    "2h", and compounds like "1h30m". Raises ValueError on anything else.
+    Fractional seconds are rounded up (0 means "use the server default",
+    so 0.5 must not silently become 0).
+    """
+    if isinstance(value, (int, float)):
+        if value < 0:
+            raise ValueError(f"Duration must be non-negative, got {value!r}")
+        return math.ceil(value)
+    text = value.strip().lower()
+    if not text:
+        raise ValueError("Duration string is empty")
+    if text.isdigit():
+        return int(text)
+    matches = list(_DURATION_RE.finditer(text))
+    if not matches or "".join(m.group(0) for m in matches) != text:
+        raise ValueError(
+            f"Invalid duration {value!r}; use seconds or e.g. '90s', '10m', '1h30m'"
+        )
+    factors = {"h": 3600, "m": 60, "s": 1}
+    return sum(int(m.group(1)) * factors[m.group(2)] for m in matches)
+
+
+def backoff_delays(
+    initial: float = 0.5,
+    maximum: float = 3.0,
+    factor: float = 2.0,
+    jitter: float = 0.2,
+) -> Iterator[float]:
+    """Yield an endless exponential backoff schedule with +/- jitter."""
+    delay = initial
+    while True:
+        yield delay * random.uniform(1 - jitter, 1 + jitter)
+        delay = min(delay * factor, maximum)
+
+
+def tags_match(subset: Mapping[str, str], tags: Mapping[str, str]) -> bool:
+    """True when every key/value in subset is present in tags."""
+    return all(tags.get(k) == v for k, v in subset.items())
+
+
+def tolerant_dataclass(cls: type, data: Mapping[str, object]) -> object:
+    """Build a dataclass from an API dict, surviving schema drift.
+
+    Unknown keys are dropped and missing fields default to None, so the
+    server adding/removing response fields never crashes the client.
+    """
+    names = {f.name for f in dataclasses.fields(cls)}
+    kwargs: dict[str, object] = {k: v for k, v in data.items() if k in names}
+    for name in names - kwargs.keys():
+        kwargs[name] = None
+    return cls(**kwargs)

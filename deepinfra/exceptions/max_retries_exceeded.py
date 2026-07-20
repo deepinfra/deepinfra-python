@@ -1,12 +1,5 @@
-"""
-This error is raised when the maximum number of retries is exceeded by DeepInfraClient.
-"""
+"""Backward-compat re-export; the class now lives in deepinfra._exceptions."""
 
+from deepinfra._exceptions import MaxRetriesExceededError
 
-class MaxRetriesExceededError(Exception):
-    """
-    This error is raised when the maximum number of retries is exceeded by DeepInfraClient.
-    """
-
-    def __init__(self, message="Maximum retries exceeded"):
-        super().__init__(message)
+__all__ = ["MaxRetriesExceededError"]
