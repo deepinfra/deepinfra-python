@@ -49,3 +49,12 @@ class TestSchemaDrift(unittest.TestCase):
         self.assertEqual(response.results[0]["generated_text"], "hi")
         self.assertIsNone(response.num_tokens)
         self.assertIsNone(response.inference_status)
+
+
+def test_missing_api_key_warns_instead_of_crashing(monkeypatch, capsys):
+    # Regression: 0.2.0 briefly raised AttributeError here because the
+    # env-lookup no longer assigned self.auth_token before the warning read it.
+    monkeypatch.delenv("DEEPINFRA_API_KEY", raising=False)
+    model = TextGeneration(model_name)
+    assert model.auth_token == ""
+    assert "No API key provided" in capsys.readouterr().out

@@ -50,6 +50,12 @@ r = await sb.aexec("uname", "-a")
 await sb.aterminate()
 ```
 
+The zero-config async calls share one process-wide client whose connection
+pool binds to the first event loop that uses it. If your program calls
+`asyncio.run()` more than once, create a `DeepInfraClient` per loop and pass
+it via `client=` (closing it with `await client.aclose()` before the loop
+exits), instead of relying on the default client.
+
 Useful patterns:
 
 ```python
@@ -68,9 +74,12 @@ sb.exec("python3", "/work/script.py", timeout="30m")
 ```
 
 Errors are typed: `AuthenticationError` (401), `NotFoundError` (404),
-`ConflictError` (409, e.g. exec on a stopped sandbox), `TooManySandboxesError`
-(429, per-account cap), `CapacityError` (503), plus SDK-side
-`SandboxTimeoutError` / `SandboxFailedError` / `CommandFailedError`.
+`ConflictError` (409, e.g. exec on a stopped sandbox), `RateLimitError`
+(429; for sandboxes that's the per-account cap — `TooManySandboxesError` is
+an alias), `CapacityError` (503), plus SDK-side `SandboxTimeoutError` /
+`SandboxFailedError` / `CommandFailedError`. If `Sandbox.create(wait=True)`
+fails while waiting, the raised error carries `.sandbox_id` so you can
+inspect or terminate the sandbox it created.
 
 Roadmap (API designed, lands in an upcoming release): `exec_stream` (live
 output), `snapshot()` / `Sandbox.from_snapshot()`, `expose_port()`,

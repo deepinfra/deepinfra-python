@@ -3,11 +3,13 @@ import pytest
 import respx
 
 from deepinfra import (
+    APITimeoutError,
     AuthenticationError,
     CapacityError,
     ConflictError,
     MaxRetriesExceededError,
     NotFoundError,
+    RateLimitError,
     TooManySandboxesError,
 )
 from deepinfra._exceptions import APIConnectionError, APIStatusError, InternalServerError
@@ -48,7 +50,7 @@ def test_base_url_from_env(monkeypatch):
         (401, AuthenticationError),
         (404, NotFoundError),
         (409, ConflictError),
-        (429, TooManySandboxesError),
+        (429, RateLimitError),
         (503, CapacityError),
         (500, InternalServerError),
         (418, APIStatusError),
@@ -135,6 +137,15 @@ def test_legacy_exception_compat():
     from deepinfra.exceptions import MaxRetriesExceededError as legacy
 
     assert legacy is MaxRetriesExceededError
+    assert TooManySandboxesError is RateLimitError
+
+
+@respx.mock
+def test_timeout_maps_to_api_timeout_error(client):
+    respx.get(f"{BASE_URL}/x").side_effect = httpx.ReadTimeout("too slow")
+    with pytest.raises(APITimeoutError):
+        client.request(RequestSpec("GET", "/x"))
+    assert issubclass(APITimeoutError, APIConnectionError)
 
 
 @respx.mock
@@ -142,6 +153,35 @@ def test_absolute_url_bypasses_base_url(client):
     route = respx.post("https://other.example.com/v1/inference/m").respond(json={})
     client.request(RequestSpec("POST", "https://other.example.com/v1/inference/m"))
     assert route.call_count == 1
+
+
+@respx.mock
+async def test_async_get_retries_connect_errors(client):
+    route = respx.get(f"{BASE_URL}/x")
+    route.side_effect = [httpx.ConnectError("refused"), httpx.Response(200, json={"ok": 1})]
+    response = await client.arequest(RequestSpec("GET", "/x", retry_connect=True))
+    assert response.json() == {"ok": 1}
+    assert route.call_count == 2
+    await client.aclose()
+
+
+@respx.mock
+async def test_async_get_retries_502(client):
+    route = respx.get(f"{BASE_URL}/x")
+    route.side_effect = [httpx.Response(502), httpx.Response(200, json={})]
+    await client.arequest(RequestSpec("GET", "/x", retry_connect=True))
+    assert route.call_count == 2
+    await client.aclose()
+
+
+@respx.mock
+async def test_async_retries_exhausted_raises_max_retries(client):
+    route = respx.get(f"{BASE_URL}/x")
+    route.side_effect = httpx.ConnectError("refused")
+    with pytest.raises(MaxRetriesExceededError):
+        await client.arequest(RequestSpec("GET", "/x", retry_connect=True))
+    assert route.call_count == client.max_retries + 1
+    await client.aclose()
 
 
 @respx.mock

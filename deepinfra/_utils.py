@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import math
 import random
 import re
 from collections.abc import Iterator, Mapping
@@ -15,11 +16,13 @@ def parse_duration(value: int | float | str) -> int:
 
     Accepts plain numbers (seconds) or strings like "90", "90s", "10m",
     "2h", and compounds like "1h30m". Raises ValueError on anything else.
+    Fractional seconds are rounded up (0 means "use the server default",
+    so 0.5 must not silently become 0).
     """
     if isinstance(value, (int, float)):
         if value < 0:
             raise ValueError(f"Duration must be non-negative, got {value!r}")
-        return int(value)
+        return math.ceil(value)
     text = value.strip().lower()
     if not text:
         raise ValueError("Duration string is empty")

@@ -91,8 +91,15 @@ class ContentTooLargeError(APIStatusError):
     pass
 
 
-class TooManySandboxesError(APIStatusError):
-    pass
+class RateLimitError(APIStatusError):
+    """The API returned 429: a rate or resource limit was exceeded.
+
+    For the sandbox API this is the per-account active-sandbox cap;
+    ``TooManySandboxesError`` is kept as an alias for that reading.
+    """
+
+
+TooManySandboxesError = RateLimitError
 
 
 class CapacityError(APIStatusError):
@@ -110,7 +117,7 @@ _STATUS_TO_EXCEPTION: dict[int, type[APIStatusError]] = {
     404: NotFoundError,
     409: ConflictError,
     413: ContentTooLargeError,
-    429: TooManySandboxesError,
+    429: RateLimitError,
     503: CapacityError,
 }
 
@@ -155,11 +162,26 @@ class SandboxError(DeepInfraError):
     """Base class for sandbox-lifecycle errors raised client-side."""
 
 
-class SandboxTimeoutError(SandboxError):
+class SandboxWaitError(SandboxError):
+    """Waiting for a sandbox state transition failed.
+
+    ``sandbox_id`` identifies the sandbox so callers can inspect or clean it
+    up (``Sandbox.from_id(exc.sandbox_id).terminate()``) — in particular when
+    ``Sandbox.create(wait=True)`` raises and no handle was returned.
+    """
+
+    sandbox_id: str | None
+
+    def __init__(self, message: str, *, sandbox_id: str | None = None) -> None:
+        super().__init__(message)
+        self.sandbox_id = sandbox_id
+
+
+class SandboxTimeoutError(SandboxWaitError):
     """Waiting for a sandbox state transition timed out."""
 
 
-class SandboxFailedError(SandboxError):
+class SandboxFailedError(SandboxWaitError):
     """The sandbox entered a terminal failed/deleted state."""
 
 

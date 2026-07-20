@@ -8,7 +8,10 @@ from deepinfra._utils import backoff_delays, parse_duration, tags_match
     [
         (0, 0),
         (90, 90),
-        (90.9, 90),
+        # fractional seconds round up: 0 means "server default", so a small
+        # positive timeout must never truncate to 0
+        (0.5, 1),
+        (90.9, 91),
         ("90", 90),
         ("90s", 90),
         ("10m", 600),

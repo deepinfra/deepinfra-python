@@ -65,6 +65,12 @@ class DeepInfraClient:
 
     The sync and async httpx clients are only instantiated on first use, so
     sync-only callers never create an event-loop-bound client and vice versa.
+
+    The async client's connection pool is bound to the event loop that first
+    uses it. Reusing one DeepInfraClient across event loops (e.g. calling
+    asyncio.run() several times against the module-level default client) can
+    fail with "Event loop is closed"; call aclose() before the loop exits, or
+    create one client per loop.
     """
 
     def __init__(

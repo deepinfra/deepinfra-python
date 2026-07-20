@@ -61,9 +61,8 @@ class BaseModel:
         Warns the user about the missing API key.
         @return: An empty string.
         """
-        if not self.auth_token:
-            print(
-                "Warning: No API key provided. "
-                "Please provide an API key to authenticate your requests."
-            )
+        print(
+            "Warning: No API key provided. "
+            "Please provide an API key to authenticate your requests."
+        )
         return ""

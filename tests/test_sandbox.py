@@ -81,16 +81,18 @@ def test_from_id_empty_raises(client):
 def test_create_failed_state_raises(client):
     respx.post(f"{BASE_URL}/v1/sandboxes").respond(json={"sandbox_id": SB_ID})
     respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json=_info("failed"))
-    with pytest.raises(SandboxFailedError, match="failed"):
+    with pytest.raises(SandboxFailedError, match="failed") as excinfo:
         Sandbox.create(client=client)
+    assert excinfo.value.sandbox_id == SB_ID
 
 
 @respx.mock
 def test_wait_timeout_mentions_id(client, monkeypatch):
     respx.post(f"{BASE_URL}/v1/sandboxes").respond(json={"sandbox_id": SB_ID})
     respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json=_info("creating"))
-    with pytest.raises(SandboxTimeoutError, match=SB_ID):
+    with pytest.raises(SandboxTimeoutError, match=SB_ID) as excinfo:
         Sandbox.create(wait_timeout=0.5, client=client)
+    assert excinfo.value.sandbox_id == SB_ID
 
 
 @respx.mock

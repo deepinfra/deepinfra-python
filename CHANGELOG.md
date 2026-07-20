@@ -10,6 +10,9 @@
   retries where marked, 502/503/504 retries only on GETs).
 - Typed exception hierarchy under `deepinfra` /`deepinfra.exceptions`;
   `MaxRetriesExceededError` is now a subclass of `APIConnectionError`.
+  429 maps to `RateLimitError` (`TooManySandboxesError` is an alias), and
+  `SandboxTimeoutError`/`SandboxFailedError` carry `.sandbox_id` so a failed
+  `Sandbox.create(wait=True)` can still be cleaned up.
 - The inference wrappers (`TextGeneration`, `Embeddings`,
   `AutomaticSpeechRecognition`, `TextToImage`) keep their public API but now
   run on the unified client; `requests`/`requests-toolbelt` dependencies

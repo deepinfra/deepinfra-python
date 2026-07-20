@@ -196,7 +196,8 @@ class Sandbox:
             if time.monotonic() + delay > deadline:
                 raise SandboxTimeoutError(
                     f"Sandbox {self.id} still {self.state} after "
-                    f"{timeout:.0f}s (terminate it if unwanted)"
+                    f"{timeout:.0f}s (terminate it if unwanted)",
+                    sandbox_id=self.id,
                 )
             time.sleep(delay)
         raise AssertionError("unreachable")
@@ -215,7 +216,8 @@ class Sandbox:
             if time.monotonic() + delay > deadline:
                 raise SandboxTimeoutError(
                     f"Sandbox {self.id} still {self.state} after "
-                    f"{timeout:.0f}s (terminate it if unwanted)"
+                    f"{timeout:.0f}s (terminate it if unwanted)",
+                    sandbox_id=self.id,
                 )
             await asyncio.sleep(delay)
         raise AssertionError("unreachable")
@@ -297,7 +299,8 @@ class Sandbox:
     def _check_wait_state(self) -> None:
         if self.state in _TERMINAL_STATES:
             raise SandboxFailedError(
-                f"Sandbox {self.id} entered state {self.state!r}"
+                f"Sandbox {self.id} entered state {self.state!r}",
+                sandbox_id=self.id,
             )
 
     def _exec_spec(
