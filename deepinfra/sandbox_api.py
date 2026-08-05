@@ -174,7 +174,11 @@ class Sandbox:
         return cls._from_list(items, tags, client)
 
     @classmethod
-    def catalog(cls, *, client: DeepInfraClient | None = None) -> builtins.list[SandboxPlan]:
+    def catalog(
+        cls,
+        *, 
+        client: DeepInfraClient | None = None,
+    ) -> builtins.list[SandboxPlan]:
         """List available sandbox plans with their specs and hourly pricing."""
         client = client or default_client()
         items = client.request(_catalog_spec()).json()
@@ -182,7 +186,9 @@ class Sandbox:
 
     @classmethod
     async def acatalog(
-        cls, *, client: DeepInfraClient | None = None
+        cls, 
+        *, 
+        client: DeepInfraClient | None = None,
     ) -> builtins.list[SandboxPlan]:
         client = client or default_client()
         items = (await client.arequest(_catalog_spec())).json()
