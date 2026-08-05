@@ -176,7 +176,7 @@ class Sandbox:
     @classmethod
     def catalog(
         cls,
-        *, 
+        *,
         client: DeepInfraClient | None = None,
     ) -> builtins.list[SandboxPlan]:
         """List available sandbox plans with their specs and hourly pricing."""
@@ -186,8 +186,8 @@ class Sandbox:
 
     @classmethod
     async def acatalog(
-        cls, 
-        *, 
+        cls,
+        *,
         client: DeepInfraClient | None = None,
     ) -> builtins.list[SandboxPlan]:
         client = client or default_client()
