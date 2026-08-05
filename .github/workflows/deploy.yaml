@@ -1,39 +1,42 @@
 name: Publish to PyPI
-
 on:
   push:
     tags:
       - 'v*'
-
 jobs:
   build-n-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
-    environment: pypi
+    environment:
+      name: pypi
+      url: https://pypi.org/p/deepinfra
     permissions:
-      id-token: write  # PyPI trusted publishing (OIDC)
-
+      id-token: write   # PyPI trusted publishing (OIDC)
+      contents: read    # actions/checkout
     steps:
     - uses: actions/checkout@v4
-
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-
     - name: Check tag matches package version
       run: |
-        pkg_version=$(grep -o '"[^"]*"' deepinfra/_version.py | tr -d '"')
+        pkg_version=$(python - <<'PY'
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("_version", "deepinfra/_version.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        print(mod.__version__)
+        PY
+        )
         tag_version="${GITHUB_REF_NAME#v}"
         if [ "$pkg_version" != "$tag_version" ]; then
           echo "Tag $GITHUB_REF_NAME does not match _version.py ($pkg_version)" >&2
           exit 1
         fi
-
     - name: Build dist
       run: |
         python -m pip install --upgrade pip build
         python -m build
-
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
