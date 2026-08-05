@@ -21,7 +21,7 @@ from ._exceptions import (
     SandboxWaitError,
     TooManySandboxesError,
 )
-from ._sandbox_models import ExecResult, SandboxInfo
+from ._sandbox_models import ExecResult, SandboxInfo, SandboxPlan
 from ._version import __version__
 from .clients import DeepInfraClient, RequestSpec
 from .models import (
@@ -39,6 +39,7 @@ __all__ = [
     "Sandbox",
     "SandboxFS",
     "SandboxInfo",
+    "SandboxPlan",
     "ExecResult",
     # client
     "DeepInfraClient",

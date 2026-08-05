@@ -68,6 +68,10 @@ with Sandbox.create(plan="small") as sb:
 sb = Sandbox.from_id("sb_...")
 etl_boxes = Sandbox.list(tags={"job": "etl-42"})
 
+# List available plans (id, vcpu, ram_gb, disk_gb, price_per_hour)
+for plan in Sandbox.catalog():
+    print(plan.id, plan.vcpu, plan.ram_gb, plan.price_per_hour)
+
 # Large scripts: upload, then run
 sb.fs.write("/work/script.py", open("script.py").read())
 sb.exec("python3", "/work/script.py", timeout="30m")

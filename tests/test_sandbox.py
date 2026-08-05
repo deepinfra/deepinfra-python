@@ -227,6 +227,28 @@ async def test_async_lifecycle(client):
 
 
 @respx.mock
+def test_catalog(client):
+    plans = [
+        {"id": "nano", "vcpu": 1, "ram_gb": 1, "disk_gb": 10, "price_per_hour": 0.01},
+        {"id": "medium", "vcpu": 4, "ram_gb": 8, "disk_gb": 40, "price_per_hour": 0.08},
+    ]
+    get = respx.get(f"{BASE_URL}/v1/sandboxes/catalog").respond(json=plans)
+    result = Sandbox.catalog(client=client)
+    assert get.call_count == 1
+    assert [p.id for p in result] == ["nano", "medium"]
+    assert result[0].vcpu == 1
+    assert result[1].price_per_hour == 0.08
+
+
+@respx.mock
+async def test_acatalog(client):
+    plans = [{"id": "nano", "vcpu": 1, "ram_gb": 1, "disk_gb": 10, "price_per_hour": 0.01}]
+    respx.get(f"{BASE_URL}/v1/sandboxes/catalog").respond(json=plans)
+    result = await Sandbox.acatalog(client=client)
+    assert result[0].id == "nano"
+
+
+@respx.mock
 async def test_async_context_manager(client):
     respx.get(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json=_info("running"))
     delete = respx.delete(f"{BASE_URL}/v1/sandboxes/{SB_ID}").respond(json={})
