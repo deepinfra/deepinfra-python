@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2026-08-05)
+
+- New: `Sandbox.catalog()` / `Sandbox.acatalog()` list the available sandbox
+  plans (`GET /v1/sandboxes/catalog`), returned as the new `SandboxPlan` model
+  (vCPU, RAM, disk, hourly price).
+
 ## 0.2.0 (2026-07-10)
 
 - New feature: **Sandboxes** — `Sandbox.create/from_id/list`, `exec`,
