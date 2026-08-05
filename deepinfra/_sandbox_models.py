@@ -19,6 +19,18 @@ class SandboxInfo(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(extra="ignore")
 
 
+class SandboxPlan(pydantic.BaseModel):
+    """A plan offered by GET /v1/sandboxes/catalog."""
+
+    id: str
+    vcpu: int
+    ram_gb: int
+    disk_gb: int
+    price_per_hour: float
+
+    model_config = pydantic.ConfigDict(extra="ignore")
+
+
 class ExecResult(pydantic.BaseModel):
     """Aggregated result of a sandbox command."""
 

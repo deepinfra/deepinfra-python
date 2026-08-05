@@ -22,7 +22,7 @@ from typing import Any, Union
 from urllib.parse import quote
 
 from ._exceptions import NotFoundError, SandboxFailedError, SandboxTimeoutError
-from ._sandbox_models import ExecResult, SandboxInfo
+from ._sandbox_models import ExecResult, SandboxInfo, SandboxPlan
 from ._streaming import afold_exec_events, aiter_ndjson, fold_exec_events, iter_ndjson
 from ._utils import backoff_delays, parse_duration, tags_match
 from .clients.deepinfra import DeepInfraClient, RequestSpec, default_client
@@ -172,6 +172,21 @@ class Sandbox:
         client = client or default_client()
         items = (await client.arequest(_list_spec())).json()
         return cls._from_list(items, tags, client)
+
+    @classmethod
+    def catalog(cls, *, client: DeepInfraClient | None = None) -> builtins.list[SandboxPlan]:
+        """List available sandbox plans with their specs and hourly pricing."""
+        client = client or default_client()
+        items = client.request(_catalog_spec()).json()
+        return [SandboxPlan.model_validate(item) for item in items]
+
+    @classmethod
+    async def acatalog(
+        cls, *, client: DeepInfraClient | None = None
+    ) -> builtins.list[SandboxPlan]:
+        client = client or default_client()
+        items = (await client.arequest(_catalog_spec())).json()
+        return [SandboxPlan.model_validate(item) for item in items]
 
     # -- lifecycle --
 
@@ -436,6 +451,10 @@ def _get_spec(sandbox_id: str) -> RequestSpec:
 
 def _list_spec() -> RequestSpec:
     return RequestSpec("GET", _SANDBOXES, retry_connect=True)
+
+
+def _catalog_spec() -> RequestSpec:
+    return RequestSpec("GET", f"{_SANDBOXES}/catalog", retry_connect=True)
 
 
 def _op_spec(sandbox_id: str, op: str) -> RequestSpec:
