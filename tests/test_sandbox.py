@@ -44,7 +44,6 @@ def test_create_waits_until_running(client):
     assert get.call_count == 3
     body = json.loads(create.calls.last.request.content)
     assert body == {
-        "image": "",
         "plan": "medium",
         "tags": {"job": "t"},
         "timeout_seconds": 600,

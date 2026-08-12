@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 (2026-08-12)
+
+- Breaking: `Sandbox.create()` / `acreate()` no longer take `image`. The server
+  stopped accepting a caller-set image: sandboxes always run the managed base
+  image, which now ships curl, wget, git, jq, build-essential, node and npm.
+  `Sandbox.image` still reports which image a sandbox is running.
+- Docs: examples used `/work/...`, which the server rejects — only `/workspace`
+  is readable/writable through `fs`, and it is the only path that survives
+  `stop()`/`start()` (or the idle auto-stop). Corrected throughout, with the
+  persistence caveat spelled out in the README.
+
 ## 0.2.1 (2026-08-05)
 
 - New: `Sandbox.catalog()` / `Sandbox.acatalog()` list the available sandbox
