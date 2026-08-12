@@ -34,13 +34,18 @@ print(r.stdout, r.stderr, r.returncode)
 out = sb.run_python("print(21 * 2)").check()          # .check() raises on non-zero exit
 print(out.stdout)                                     # "42"
 
-sb.fs.write("/work/in.csv", b"a,b\n1,2\n")
-data = sb.fs.read("/work/in.csv")
+sb.fs.write("/workspace/in.csv", b"a,b\n1,2\n")
+data = sb.fs.read("/workspace/in.csv")
 
 sb.stop()        # frees compute, keeps disk; blocks until stopped
 sb.start()       # resumes on the same disk; blocks until running
 sb.terminate()   # deletes the sandbox (stays fetchable by id as "deleted" briefly)
 ```
+
+`/workspace` is the only location `fs` accepts, and the only one that survives
+`stop()`/`start()` — the rest of the filesystem comes back from the base image, so
+packages installed at runtime are gone after a restart. Sandboxes also auto-stop
+once idle for `timeout` (1 hour by default), which has the same effect.
 
 Every network method has an async twin prefixed with `a`:
 
@@ -61,8 +66,8 @@ Useful patterns:
 ```python
 # Auto-terminate with a context manager
 with Sandbox.create(plan="small") as sb:
-    sb.run_python("open('/work/out.txt', 'w').write('hi')")
-    print(sb.fs.read("/work/out.txt"))
+    sb.run_python("open('/workspace/out.txt', 'w').write('hi')")
+    print(sb.fs.read("/workspace/out.txt"))
 
 # Find existing sandboxes
 sb = Sandbox.from_id("sb_...")
@@ -73,8 +78,8 @@ for plan in Sandbox.catalog():
     print(plan.id, plan.vcpu, plan.ram_gb, plan.price_per_hour)
 
 # Large scripts: upload, then run
-sb.fs.write("/work/script.py", open("script.py").read())
-sb.exec("python3", "/work/script.py", timeout="30m")
+sb.fs.write("/workspace/script.py", open("script.py").read())
+sb.exec("python3", "/workspace/script.py", timeout="30m")
 ```
 
 Errors are typed: `AuthenticationError` (401), `NotFoundError` (404),

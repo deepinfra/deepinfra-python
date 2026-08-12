@@ -2,12 +2,19 @@
 
     from deepinfra import Sandbox
 
+    for plan in Sandbox.catalog():
+        print(plan.id, plan.vcpu, plan.ram_gb, plan.price_per_hour)
+
     sb = Sandbox.create(plan="medium", timeout="10m")
     r = sb.exec("bash", "-c", "pip install pandas && python -c 'import pandas'")
     print(r.stdout, r.returncode)
-    sb.fs.write("/work/in.csv", b"a,b\n1,2\n")
-    data = sb.fs.read("/work/in.csv")
+    sb.fs.write("/workspace/in.csv", b"a,b\n1,2\n")
+    data = sb.fs.read("/workspace/in.csv")
     sb.terminate()
+
+Only paths under /workspace are readable/writable through fs, and /workspace is
+the only directory that survives stop/start -- everything else reverts to the
+base image.
 
 Every network method has an async twin prefixed with "a" (exec/aexec,
 create/acreate, ...).
@@ -91,7 +98,6 @@ class Sandbox:
     def create(
         cls,
         *,
-        image: str = "",
         plan: str = "",
         timeout: Duration | None = None,
         tags: Mapping[str, str] | None = None,
@@ -101,7 +107,7 @@ class Sandbox:
     ) -> Sandbox:
         """Create a sandbox; by default block until it is running."""
         client = client or default_client()
-        reply = client.request(cls._create_spec(image, plan, timeout, tags)).json()
+        reply = client.request(cls._create_spec(plan, timeout, tags)).json()
         sandbox = cls(SandboxInfo(sandbox_id=reply["sandbox_id"]), client=client)
         if wait:
             sandbox.wait_until_running(timeout=wait_timeout)
@@ -113,7 +119,6 @@ class Sandbox:
     async def acreate(
         cls,
         *,
-        image: str = "",
         plan: str = "",
         timeout: Duration | None = None,
         tags: Mapping[str, str] | None = None,
@@ -122,7 +127,7 @@ class Sandbox:
         client: DeepInfraClient | None = None,
     ) -> Sandbox:
         client = client or default_client()
-        reply = (await client.arequest(cls._create_spec(image, plan, timeout, tags))).json()
+        reply = (await client.arequest(cls._create_spec(plan, timeout, tags))).json()
         sandbox = cls(SandboxInfo(sandbox_id=reply["sandbox_id"]), client=client)
         if wait:
             await sandbox.await_until_running(timeout=wait_timeout)
@@ -279,8 +284,8 @@ class Sandbox:
     def run_python(self, code: str, *, timeout: Duration | None = None) -> ExecResult:
         """Run a Python snippet (python3 -c).
 
-        For large scripts prefer fs.write("/work/script.py", code) +
-        exec("python3", "/work/script.py").
+        For large scripts prefer fs.write("/workspace/script.py", code) +
+        exec("python3", "/workspace/script.py").
         """
         return self.exec("python3", "-c", code, timeout=timeout)
 
@@ -369,7 +374,6 @@ class Sandbox:
 
     @staticmethod
     def _create_spec(
-        image: str,
         plan: str,
         timeout: Duration | None,
         tags: Mapping[str, str] | None,
@@ -378,7 +382,6 @@ class Sandbox:
             "POST",
             _SANDBOXES,
             json={
-                "image": image,
                 "plan": plan,
                 "tags": dict(tags or {}),
                 "timeout_seconds": parse_duration(timeout) if timeout is not None else 0,
