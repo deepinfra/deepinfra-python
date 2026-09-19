@@ -3,6 +3,14 @@ import base64
 
 import httpx
 
+from deepinfra._exceptions import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+)
+
+DOWNLOAD_TIMEOUT = 30.0
+
 
 class ReadStreamUtils:
     """
@@ -34,8 +42,24 @@ class ReadStreamUtils:
         Downloads an image from a URL and returns it as a BytesIO.
         :param url: The URL of the image.
         :return: A BytesIO containing the image data.
+        :raises APIStatusError: the URL answered with an error status. Without
+            this the error page's bytes would be uploaded as the file.
+        :raises APIConnectionError: the download never got a response.
         """
-        response = httpx.get(url, follow_redirects=True)
+        try:
+            response = httpx.get(
+                url, follow_redirects=True, timeout=DOWNLOAD_TIMEOUT
+            )
+        except httpx.TimeoutException as exc:
+            raise APITimeoutError(f"Timed out downloading {url}") from exc
+        except httpx.TransportError as exc:
+            raise APIConnectionError(f"Failed to download {url}: {exc}") from exc
+        if response.is_error:
+            raise APIStatusError(
+                f"Failed to download {url}",
+                status_code=response.status_code,
+                response=response,
+            )
         return BytesIO(response.content)
 
     @staticmethod
